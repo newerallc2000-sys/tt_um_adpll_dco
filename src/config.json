@@ -1,0 +1,113 @@
+{
+  "//": "Tiny Tapeout project configuration for tt_um_adpll_dco.",
+
+  "//": "This is the TTSKY26d template's src/config.json with the design-specific",
+  "//": "keys of this project added. It is the FIRST half of the hardening config:",
+  "//": "tt-support-tools generates src/user_config.json (DESIGN_NAME, VERILOG_FILES,",
+  "//": "DIE_AREA, FP_DEF_TEMPLATE, VDD_PIN, GND_PIN, RT_MAX_LAYER) from info.yaml and",
+  "//": "merges the two into src/config_merged.json, which is what LibreLane reads.",
+  "//": "user_config wins on any key it defines, so nothing here may restate the die.",
+
+  "//": "---------------------------------------------------------------- clock",
+  "//": "The TT clock. 20 ns = 50 MHz, TT's documented floor; the demo board runs",
+  "//": "slower, so constraining here is conservative in the only direction that",
+  "//": "matters. info.yaml asks for 10 MHz because that is what the bring-up",
+  "//": "firmware drives, not what the design is signed off against.",
+  "CLOCK_PORT": "clk",
+  "CLOCK_PERIOD": 20,
+
+  "//": "---------------------------------------------------------------- the SDC",
+  "//": "One SDC, shared with the project's own hardening run under openlane/, so",
+  "//": "the ring is cut (set_disable_timing) and the osc clock is declared exactly",
+  "//": "once in this repo. Every line in it carries its reason.",
+  "PNR_SDC_FILE": "dir::tile.sdc",
+  "SIGNOFF_SDC_FILE": "dir::tile.sdc",
+
+  "//": "-------------------------------------------------------------- the ring",
+  "//": "dco_matrix is a five-stage combinational ring of 167 named cells and the",
+  "//": "census gate (T6) counts them on the built netlist. The resizer must not",
+  "//": "upsize, clone or buffer anything inside it, and the divider's two first",
+  "//": "stages are named cells too - their drive strength IS the T5 measurement.",
+  "RSZ_DONT_TOUCH_RX": ".*(u_dco|g_first).*",
+
+  "//": "The ring is a loop, so synthesis check reports it and LibreLane would",
+  "//": "otherwise stop. It is deliberate and cut in the SDC.",
+  "QUIT_ON_SYNTH_CHECKS": 0,
+  "QUIT_ON_UNMAPPED_CELLS": 0,
+
+  "//": "---------------------------------------------------------------- sources",
+  "//": "src/tt_arch.vh includes vendor/dco_arch.vh by a path relative to src/, so",
+  "//": "these directories are belt-and-braces: TT's own port check reads the",
+  "//": "sources with no include path at all and must still resolve.",
+  "VERILOG_INCLUDE_DIRS": ["dir::.", "dir::vendor"],
+
+  "//": "-------------------------------------------------------- synth and place",
+  "//": "The ring's five nets carry 52 loads each; DELAY 4 with sizing is what T6",
+  "//": "closed the clk domain with, and 35 % density is what fits 1x2 without",
+  "//": "congesting the routing around the macro.",
+  "SYNTH_STRATEGY": "DELAY 4",
+  "SYNTH_SIZING": 1,
+  "PL_TARGET_DENSITY_PCT": 35,
+
+  "//": "------------------------------------------------------------- antennas",
+  "//": "Diodes on ports would sit on the pins TT places for us; the router repairs",
+  "//": "antennas instead, and T6 signed off 0 antenna violations that way.",
+  "RUN_HEURISTIC_DIODE_INSERTION": 0,
+  "DIODE_ON_PORTS": "none",
+  "GRT_REPAIR_ANTENNAS": 1,
+
+  "//": "Post-GRT timing repair, so the clk domain closes against real routing.",
+  "RUN_POST_GRT_RESIZER_TIMING": 1,
+  "RUN_POST_GRT_DESIGN_REPAIR": 1,
+
+  "//": "Sign off DRC on the streamed GDS, not on the DEF.",
+  "MAGIC_DRC_USE_GDS": 1,
+
+  "//": "Hold slack margins - TT template defaults.",
+  "PL_RESIZER_HOLD_SLACK_MARGIN": 0.1,
+  "GRT_RESIZER_HOLD_SLACK_MARGIN": 0.05,
+
+  "//": "The linter runs; disabling it is not recommended by TT and not done here.",
+  "RUN_LINTER": 1,
+  "LINTER_INCLUDE_PDK_MODELS": 1,
+
+  "//": "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+  "//": "!!! Below this point: TT template, unchanged !!!",
+  "//": "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+
+  "//": "Save some time - the precheck runs KLayout DRC on the submitted GDS.",
+  "RUN_KLAYOUT_XOR": 0,
+  "RUN_KLAYOUT_DRC": 0,
+
+  "//": "Don't put clock buffers on the outputs",
+  "DESIGN_REPAIR_BUFFER_OUTPUT_PORTS": 0,
+
+  "//": "Reduce wasted space",
+  "TOP_MARGIN_MULT": 1,
+  "BOTTOM_MARGIN_MULT": 1,
+  "LEFT_MARGIN_MULT": 6,
+  "RIGHT_MARGIN_MULT": 6,
+
+  "//": "Absolute die size",
+  "FP_SIZING": "absolute",
+
+  "GRT_ALLOW_CONGESTION": 1,
+
+  "FP_IO_HLENGTH": 2,
+  "FP_IO_VLENGTH": 2,
+
+  "FP_PDN_VPITCH": 38.87,
+
+  "//": "Clock",
+  "RUN_CTS": 1,
+
+  "//": "Don't use power rings or met5 layer",
+  "FP_PDN_MULTILAYER": 0,
+  "RT_MAX_LAYER": "met4",
+
+  "//": "MAGIC_DEF_LABELS may cause issues with LVS",
+  "MAGIC_DEF_LABELS": 0,
+
+  "//": "Only export pin area in LEF (without any connected nets)",
+  "MAGIC_WRITE_LEF_PINONLY": 1
+}

@@ -1,0 +1,56 @@
+name: gds
+
+# Tiny Tapeout's custom-GDS workflow (ttsky-analog-template @ 301590b), with two
+# changes: the gate-level netlist is this project's own (gl/), and the first
+# step refuses to publish a layout that is not the one that was signed off.
+#
+# This project is NOT hardened by the Action. gds/tt_um_adpll_dco.gds is the
+# layout every check in signoff/ was run on -- the transistor-level simulation,
+# the device-level LVS, the nine-corner timing, the precheck -- and it is
+# published byte for byte. Why: signoff/SIGNOFF.md, "Why a custom GDS".
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  gds:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: The layout is the signed-off layout
+        run: sha256sum --check --strict signoff/SHA256SUMS
+
+      - name: Read top module name
+        id: top_module
+        run: |
+          echo TOP_MODULE=`yq '.project.top_module' info.yaml` | tee $GITHUB_OUTPUT
+
+      - name: Create and publish the GDS artifact
+        uses: TinyTapeout/tt-gds-action/custom_gds@ttsky26d
+        with:
+          top_module: ${{ steps.top_module.outputs.TOP_MODULE }}
+          gds_path: gds/${{ steps.top_module.outputs.TOP_MODULE }}.gds
+          lef_path: lef/${{ steps.top_module.outputs.TOP_MODULE }}.lef
+          verilog_path: gl/${{ steps.top_module.outputs.TOP_MODULE }}.v
+          pdk: sky130A
+
+  precheck:
+    needs: gds
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Run Tiny Tapeout Precheck
+        uses: TinyTapeout/tt-gds-action/precheck@ttsky26d
+
+  viewer:
+    needs: gds
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+    steps:
+      - uses: TinyTapeout/tt-gds-action/viewer@ttsky26d

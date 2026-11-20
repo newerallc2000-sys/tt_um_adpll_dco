@@ -1,0 +1,10 @@
+.DS_Store
+.idea
+.vscode
+*.vcd
+*.fst
+*.vvp
+__pycache__/
+runs
+tt_submission
+tt
